@@ -419,10 +419,10 @@ class SGrasp(nn.Module):
         return loss_coarse, loss_fine
 
     def forward(self, points):
-        q, coarse_point_cloud = self.base_model(points) # B M C and B M 3
-        B, M ,C = q.shape
+        q, coarse_point_cloud = self.base_model(points)  # B M C and B M 3
+        B, M, C = q.shape
 
-        _feature = self.increase_dim(q.transpose(1,2)).transpose(1,2)
+        _feature = self.increase_dim(q.transpose(1, 2)).transpose(1, 2)
         _feature = torch.max(_feature, dim=1)[0]
 
         building_feature = torch.cat([_feature.unsqueeze(-2).expand(-1, M, -1), q, coarse_point_cloud], dim=-1)
@@ -430,12 +430,26 @@ class SGrasp(nn.Module):
 
         # foldingNet
         Final_xyz = self.foldingnet(building_feature).reshape(B, M, 3, -1)
-        build_points = (Final_xyz[:,:,:3,:] + coarse_point_cloud.unsqueeze(-1)).transpose(2,3).reshape(B, -1, 3)
+        build_points = (Final_xyz[:, :, :3, :] + coarse_point_cloud.unsqueeze(-1)).transpose(2, 3).reshape(B, -1, 3)
 
-        # cat
+        # 为补全的点云添加标签 1
+        build_points_with_label = torch.cat([build_points, torch.ones((B, build_points.shape[1], 1), device=build_points.device)], dim=-1)
+
+        # 为原始的点云添加标签 0
+        points_with_label = torch.cat([points, torch.zeros((B, points.shape[1], 1), device=points.device)], dim=-1)
+
+        # 使用 FPS 从输入点云中采样稀疏点
         inp_sparse = fps(points, self.num_query)
+        inp_sparse_with_label = torch.cat([inp_sparse, torch.zeros((B, inp_sparse.shape[1], 1), device=inp_sparse.device)], dim=-1)
+
+        # 拼接稀疏点云和补全点云
         sparse_pcd = torch.cat([coarse_point_cloud, inp_sparse], dim=1).contiguous()
-        build_points = torch.cat([build_points, points],dim=1).contiguous()
-        output = (sparse_pcd, build_points)
+        sparse_pcd_with_label = torch.cat([sparse_pcd, torch.zeros((B, sparse_pcd.shape[1], 1), device=sparse_pcd.device)], dim=-1)
+
+        # 拼接补全点云和原始点云
+        build_points_with_label = torch.cat([build_points_with_label, points_with_label], dim=1).contiguous()
+
+        # 输出带标签的点云
+        output = (sparse_pcd_with_label, build_points_with_label)
         return output
 

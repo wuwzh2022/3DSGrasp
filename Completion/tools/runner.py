@@ -226,7 +226,7 @@ def test(base_model, test_loader, ChamferDisL1, ChamferDisL2, args, config, logg
 
     with torch.no_grad():
         #PATH_TO_THE_PARTIAL_DATA. REMEMBER TO CHANGE THE PATH ALSO IN THE MAIN_GPD.PY FILE
-        partial_ = o3d.io.read_point_cloud('PATH_TO_THE_PARTIAL_DATA/partial_pc.pcd')
+        partial_ = o3d.io.read_point_cloud('./exp_data/knife.xyz')
         partial_ = np.asarray(partial_.points)
         partial = farthest_point_sample(partial_,2048)
         partial = partial[:,:3]
@@ -244,7 +244,7 @@ def test(base_model, test_loader, ChamferDisL1, ChamferDisL2, args, config, logg
 
 
         ret = base_model(partial)
-        dense_points = ret[1]
+        dense_points = ret[1][:,:,:3]
 
         pcd = dense_points.cpu().squeeze()
 
@@ -258,11 +258,11 @@ def test(base_model, test_loader, ChamferDisL1, ChamferDisL2, args, config, logg
         pcdd.points = o3d.utility.Vector3dVector(pcd_r.cpu().squeeze())
 
         #PATH_TO_THE_COMPLETED_DATA_REMEMBER TO CHANGE THE PATH ALSO IN THE MAIN_GPD.PY FILE
-        o3d.io.write_point_cloud('PATH_TO_THE_COMPLETED_DATA/complete_pc.pcd',pcdd)
+        o3d.io.write_point_cloud('./exp_data/complete_pc_knife.pcd',pcdd)
         np.savetxt('outputfile.xyz', pcd_r.cpu().squeeze())
 
         pcddx = o3d.geometry.PointCloud()
         pcddx.points = o3d.utility.Vector3dVector(pcd_x.cpu().squeeze())
-        o3d.io.write_point_cloud('PATH_TO_THE_COMPLETED_DATA/complete_pc_x.pcd', pcddx)
+        o3d.io.write_point_cloud('./exp_data/complete_pc_x_knife.pcd', pcddx)
         np.savetxt('outputfile.xyz', pcd_x.cpu().squeeze())
 
